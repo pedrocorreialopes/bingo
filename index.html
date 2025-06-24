@@ -1,0 +1,248 @@
+
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo Automático</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0047AB, #FF3131);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .bingo-ball {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, white, #f0f0f0);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+        
+        .bingo-ball:hover {
+            transform: scale(1.05);
+        }
+        
+        .current-ball {
+            width: 120px;
+            height: 120px;
+            font-size: 2.5rem;
+            animation: bounce 0.5s ease;
+        }
+        
+        .letter {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .current-ball .letter {
+            font-size: 1.5rem;
+            color: #333;
+        }
+        
+        .called-balls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+        }
+        
+        @keyframes bounce {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .btn {
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white bg-opacity-90 rounded-xl shadow-2xl p-6 md:p-8">
+        <h1 class="text-4xl md:text-5xl font-bold text-center mb-6 text-gray-800">Bingo Automático</h1>
+        
+        <div class="flex flex-col items-center mb-8">
+            <div id="currentBall" class="bingo-ball current-ball mb-6">
+                <span class="letter">-</span>
+                <span class="number">-</span>
+            </div>
+            
+            <div class="flex space-x-4 mb-6">
+                <button id="pauseBtn" class="btn bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-md">
+                    Pausar
+                </button>
+                <button id="endBtn" class="btn bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md">
+                    Finalizar
+                </button>
+                <button id="newGameBtn" class="btn bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md">
+                    Nova Rodada
+                </button>
+            </div>
+        </div>
+        
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold mb-4 text-gray-700">Bolas Chamadas</h2>
+            <div id="calledBallsContainer" class="called-balls p-4 bg-gray-100 rounded-lg min-h-[200px]">
+                <!-- As bolas chamadas aparecerão aqui -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis de controle
+        let timer;
+        let isRunning = false;
+        let calledNumbers = [];
+        let availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
+        
+        // Tempo entre sorteios (10 segundos)
+        const drawInterval = 10000;
+        
+        // Elementos DOM
+        const currentBall = document.getElementById('currentBall');
+        const calledBallsContainer = document.getElementById('calledBallsContainer');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const endBtn = document.getElementById('endBtn');
+        const newGameBtn = document.getElementById('newGameBtn');
+        
+        // Função para obter a letra correspondente ao número
+        function getLetter(number) {
+            if (number >= 1 && number <= 15) return 'B';
+            if (number >= 16 && number <= 30) return 'I';
+            if (number >= 31 && number <= 45) return 'N';
+            if (number >= 46 && number <= 60) return 'G';
+            if (number >= 61 && number <= 75) return 'O';
+            return '';
+        }
+        
+        // Função para sortear uma nova bola
+        function drawBall() {
+            if (availableNumbers.length === 0) {
+                clearInterval(timer);
+                isRunning = false;
+                pauseBtn.textContent = 'Pausar';
+                pauseBtn.disabled = true;
+                pauseBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                alert('Todas as bolas foram sorteadas!');
+                return;
+            }
+            
+            // Sorteia um índice aleatório
+            const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+            const number = availableNumbers[randomIndex];
+            
+            // Remove o número sorteado da lista de disponíveis
+            availableNumbers.splice(randomIndex, 1);
+            
+            // Adiciona à lista de números chamados
+            calledNumbers.push(number);
+            
+            // Atualiza a bola atual
+            const letter = getLetter(number);
+            currentBall.innerHTML = `
+                <span class="letter">${letter}</span>
+                <span class="number">${number}</span>
+            `;
+            
+            // Adiciona a bola à lista de chamados
+            updateCalledBalls();
+        }
+        
+        // Função para atualizar a exibição das bolas chamadas
+        function updateCalledBalls() {
+            // Ordena os números chamados
+            const sortedNumbers = [...calledNumbers].sort((a, b) => a - b);
+            
+            // Limpa o container
+            calledBallsContainer.innerHTML = '';
+            
+            // Adiciona cada bola chamada
+            sortedNumbers.forEach(number => {
+                const letter = getLetter(number);
+                const ballElement = document.createElement('div');
+                ballElement.className = 'bingo-ball';
+                ballElement.innerHTML = `
+                    <span class="letter">${letter}</span>
+                    <span class="number">${number}</span>
+                `;
+                calledBallsContainer.appendChild(ballElement);
+            });
+        }
+        
+        // Função para iniciar o jogo
+        function startGame() {
+            if (!isRunning) {
+                isRunning = true;
+                pauseBtn.textContent = 'Pausar';
+                timer = setInterval(drawBall, drawInterval);
+                drawBall(); // Sorteia a primeira bola imediatamente
+            }
+        }
+        
+        // Função para pausar/continuar o jogo
+        function togglePause() {
+            if (isRunning) {
+                clearInterval(timer);
+                isRunning = false;
+                pauseBtn.textContent = 'Continuar';
+            } else {
+                timer = setInterval(drawBall, drawInterval);
+                isRunning = true;
+                pauseBtn.textContent = 'Pausar';
+            }
+        }
+        
+        // Função para finalizar o jogo
+        function endGame() {
+            clearInterval(timer);
+            isRunning = false;
+            pauseBtn.textContent = 'Pausar';
+        }
+        
+        // Função para iniciar uma nova rodada
+        function newGame() {
+            clearInterval(timer);
+            isRunning = false;
+            calledNumbers = [];
+            availableNumbers = Array.from({length: 75}, (_, i) => i + 1);
+            calledBallsContainer.innerHTML = '';
+            currentBall.innerHTML = `
+                <span class="letter">-</span>
+                <span class="number">-</span>
+            `;
+            pauseBtn.textContent = 'Pausar';
+            pauseBtn.disabled = false;
+            pauseBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            startGame();
+        }
+        
+        // Event listeners
+        pauseBtn.addEventListener('click', togglePause);
+        endBtn.addEventListener('click', endGame);
+        newGameBtn.addEventListener('click', newGame);
+        
+        // Inicia o jogo automaticamente
+        startGame();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9547ab23773ff199',t:'MTc1MDcyMDMyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
